@@ -25,7 +25,3 @@ Command to add user for mongoDB
 ```
 mongo oeuvre --eval "db.createUser({user:'podroks', pwd:'podroks987', roles: [{ role: 'readWrite', db: 'oeuvre' }]})"
 ```
-
-# TODO
-Lors de la suppression d'une oeuvre ou de la mise a jour d'une oeuvre
-remove image si aucune oeuvre l'utilise. OU nommé avec le titre l'oeuvre (mais pas ouf en cas de update du titre).
