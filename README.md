@@ -1,4 +1,4 @@
-# Oeuvre-API
+# Art-API
 A usefull API used for store Oeuvre.
 
 Some [reflection🔗](./reflection.md)

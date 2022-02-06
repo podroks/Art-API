@@ -1,5 +1,5 @@
 [🡸 Back](./README.md)
-# Oeuvre-API User Stories
+# Art-API User Stories
 
 1. I can `create` a new oeuvre object and add it to the database
 2. I can `update` a existing oeuvre object and save it in database
@@ -29,7 +29,7 @@
 }
 ```
 
-# Designing Structure for Oeuvre-API
+# Designing Structure for Art-API
 | Routes | HTTP Methods | Description |
 |-----|---|---|
 | /oeuvre | GET | Display all oeuvre |
