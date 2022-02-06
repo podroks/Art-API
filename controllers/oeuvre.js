@@ -1,90 +1,10 @@
-const fs = require("fs");
-const path = require("path");
-const multer = require("multer");
+const {
+  removeAllImage,
+  removeImage,
+  renameImage,
+} = require("../middleware/oeuvre");
 //import oeuvre model
 const Oeuvre = require("../models/oeuvre");
-
-const dirUploads = "./uploads/oeuvre";
-
-const storageAdd = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, dirUploads);
-  },
-  filename: function (req, file, cb) {
-    if (!req.body) cb(new Error("Request body is required."), null);
-    if (!req.body.title) cb(new Error("Oeuvre title is required."), null);
-    Oeuvre.findOne({ title: req.body.title }, (err, data) => {
-      if (!data) {
-        const title =
-          encodeURIComponent(req.body.title) + path.extname(file.originalname);
-        cb(null, title);
-      } else {
-        if (err)
-          cb(new Error(`Something went wrong, please try again. ${err}`), null);
-        else cb(new Error("Oeuvre already exists."), null);
-      }
-    });
-  },
-});
-const uploadAdd = multer({ storage: storageAdd }).single("image");
-
-const storageUpdate = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, dirUploads);
-  },
-  filename: function (req, file, cb) {
-    if (!req.body) cb(new Error("Request body is required."), null);
-
-    Oeuvre.findOne({ _id: req.params.id }, (err, data) => {
-      if (err || !data) {
-        cb(new Error("Oeuvre doesn't exist."), null);
-      } else {
-        if (!req.body.title) {
-          const title =
-            encodeURIComponent(data.title) + path.extname(file.originalname);
-          cb(null, title);
-          if (`${dirUploads}/${title}` != data.image.src) {
-            removeImage(data.image.src);
-          }
-        } else {
-          // Check if title is unique
-          Oeuvre.findOne({ title: req.body.title }, (err, oeuvreByTitle) => {
-            if (err)
-              cb(
-                new Error(`Something went wrong, please try again. ${err}`),
-                null
-              );
-            if (oeuvreByTitle && !oeuvreByTitle._id.equals(data._id)) {
-              cb(new Error("Oeuvre already exists."), null);
-            } else {
-              const title =
-                encodeURIComponent(req.body.title) +
-                path.extname(file.originalname);
-              cb(null, title);
-              if (`${dirUploads}/${title}` != data.image.src) {
-                removeImage(data.image.src);
-              }
-            }
-          });
-        }
-      }
-    });
-  },
-});
-const uploadUpdate = multer({ storage: storageUpdate }).single("image");
-
-const removeImage = function (imgSrc) {
-  if (!imgSrc) return;
-  try {
-    if (fs.existsSync(imgSrc)) {
-      fs.unlink(imgSrc, (err) => {
-        if (err) throw err;
-      });
-    }
-  } catch (err) {
-    console.error(`No file to the path : ${imgSrc}`);
-  }
-};
 
 // function for GET /oeuvre route
 const getAllOeuvre = (req, res) => {
@@ -118,13 +38,18 @@ const newOeuvre = (req, res) => {
       const newOeuvre = new Oeuvre({
         title: req.body.title,
         description: req.body.description,
-        keywords: req.body.keywords,
+        keywords: req.body.keywords ? req.body.keywords : [],
         date: req.body.date,
         image: {
-          src: req.file && req.file.path,
-          style: req.body.image?.style,
+          src: req.files && req.files.image && req.files.image[0].path,
+          style: req.body["image.style"],
         },
-        ref: req.body.ref,
+        ref: {
+          image: {
+            src: req.files && req.files.refImage && req.files.refImage[0].path,
+            style: req.body["ref.image.style"],
+          },
+        },
         priorityOrder: req.body.priorityOrder,
       });
 
@@ -158,14 +83,39 @@ const updateOneOeuvre = (req, res) => {
         if (oeuvreByTitle && !oeuvreByTitle._id.equals(data._id)) {
           return res.json({ message: "Oeuvre already exists" });
         } else {
+          const oldTitle = data.title;
           // Update
           if (req.body.title) data.title = req.body.title;
-          if (req.body.description) data.description = req.body.description;
-          if (req.body.keywords) data.keywords = req.body.keywords;
+          if ("description" in req.body)
+            data.description = req.body.description;
+          if ("keywords" in req.body) {
+            data.keywords = req.body.keywords ? req.body.keywords : [];
+          }
           if (req.body.date) data.date = req.body.date;
-          if (req.file) data.image.src = req.file.path;
-          if (req.body.image?.style) data.image.style = req.body.image.style;
-          if (req.body.ref) data.ref = req.body.ref;
+          if (req.files && req.files.image) {
+            data.image.src = req.files.image[0].path;
+          } else if ("image.src" in req.body && data.image.src) {
+            removeImage(data.image.src);
+            data.image.src = "";
+          } else if (data.image.src && oldTitle != data.title) {
+            data.image.src = renameImage(data.image.src, data.title);
+          }
+          if (req.files && req.files.refImage) {
+            data.ref.image.src = req.files.refImage[0].path;
+          } else if ("ref.image.src" in req.body && data.ref.image.src) {
+            removeImage(data.ref.image.src);
+            data.ref.image.src = "";
+          } else if (data.ref.image.src && oldTitle != data.title) {
+            data.ref.image.src = renameImage(
+              data.ref.image.src,
+              data.title,
+              "refImage"
+            );
+          }
+          if ("image.style" in req.body)
+            data.image.style = req.body["image.style"];
+          if ("ref.image.style" in req.body)
+            data.ref.image.style = req.body["ref.image.style"];
           if (req.body.priorityOrder)
             data.priorityOrder = req.body.priorityOrder;
 
@@ -187,16 +137,7 @@ const updateOneOeuvre = (req, res) => {
 
 // function for DELETE /oeuvre route
 const deleteAllOeuvre = (req, res) => {
-  // Delete all images
-  fs.readdir(dirUploads, (err, files) => {
-    if (err) throw err;
-
-    for (const file of files) {
-      fs.unlink(`${dirUploads}/${file}`, (err) => {
-        if (err) throw err;
-      });
-    }
-  });
+  removeAllImage();
   // Delete all Oeuvre Object
   Oeuvre.deleteMany({}, (err) => {
     if (err) {
@@ -210,21 +151,27 @@ const deleteAllOeuvre = (req, res) => {
 const deleteOneOeuvre = (req, res) => {
   let id = req.params.id;
 
-  Oeuvre.deleteOne({ _id: id }, (err, data) => {
-    //if there's nothing to delete return a message
-    if (data.deletedCount == 0)
+  Oeuvre.findOne({ _id: id }, (err, deletedOeuvre) => {
+    if (err || !deletedOeuvre) {
       return res.json({ message: "Oeuvre doesn't exist." });
-    //else if there's an error, return the err message
-    else if (err)
-      return res.json(`Something went wrong, please try again. ${err}`);
-    //else, return the success message
-    else return res.json({ message: "Oeuvre deleted." });
+    } else {
+      Oeuvre.deleteOne({ _id: id }, (err, data) => {
+        if (data.deletedCount == 0) {
+          return res.json({ message: "Oeuvre doesn't exist." });
+        } else if (err) {
+          return res.json(`Something went wrong, please try again. ${err}`);
+        } else {
+          if (deletedOeuvre.image.src) removeImage(deletedOeuvre.image.src);
+          if (deletedOeuvre.ref.image.src)
+            removeImage(deletedOeuvre.ref.image.src);
+          return res.json({ message: "Oeuvre deleted." });
+        }
+      });
+    }
   });
 };
 
 module.exports = {
-  uploadAdd,
-  uploadUpdate,
   getAllOeuvre,
   getOneOeuvre,
   newOeuvre,

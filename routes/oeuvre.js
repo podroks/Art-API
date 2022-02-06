@@ -3,17 +3,18 @@ const express = require("express");
 const router = express.Router();
 
 const oeuvreController = require("../controllers/oeuvre");
+const oeuvreMiddleware = require("../middleware/oeuvre");
 
-router.get("/oeuvre", oeuvreController.getAllOeuvre);
-router.post("/oeuvre", oeuvreController.uploadAdd, oeuvreController.newOeuvre);
-router.delete("/oeuvre", oeuvreController.deleteAllOeuvre);
+router.get("/", oeuvreController.getAllOeuvre);
+router.post("/", oeuvreMiddleware.uploadAdd, oeuvreController.newOeuvre);
+router.delete("/", oeuvreController.deleteAllOeuvre);
 
-router.get("/oeuvre/:id", oeuvreController.getOneOeuvre);
+router.get("/:id", oeuvreController.getOneOeuvre);
 router.put(
-  "/oeuvre/:id",
-  oeuvreController.uploadUpdate,
+  "/:id",
+  oeuvreMiddleware.uploadUpdate,
   oeuvreController.updateOneOeuvre
 );
-router.delete("/oeuvre/:id", oeuvreController.deleteOneOeuvre);
+router.delete("/:id", oeuvreController.deleteOneOeuvre);
 
 module.exports = router; // export to use in server.js

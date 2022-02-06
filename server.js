@@ -1,7 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
-const routes = require("./routes/oeuvre");
+const OeuvreRoutes = require("./routes/oeuvre");
+
+Object.defineProperty(String.prototype, "hashCode", {
+  value: function () {
+    var hash = 0,
+      i,
+      chr;
+    for (i = 0; i < this.length; i++) {
+      chr = this.charCodeAt(i);
+      hash = (hash << 5) - hash + chr;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash;
+  },
+});
 
 mongoose.connect(
   process.env.MONGODB_URI,
@@ -24,8 +38,10 @@ app.use(express.json());
 
 app.use("/uploads", express.static("./uploads"));
 
-app.use("/", routes);
+// Router
+app.use("/oeuvre", OeuvreRoutes);
 
+// Catch middleware error
 app.use(function (err, req, res, next) {
   console.error(err.stack);
   res.status(500).send({ message: "[middleware] " + err.message });
