@@ -22,9 +22,14 @@ mongoose.connect(
   {
     useUnifiedTopology: true,
     useNewUrlParser: true,
+    serverSelectionTimeoutMS: 1000,
   },
   (err) => {
-    if (err) return console.log("Error: ", err);
+    if (err) {
+      console.log("Error: ", err);
+      server.close();
+      return;
+    }
     console.log(
       "MongoDB Connection -- Ready state is:",
       mongoose.connection.readyState
